@@ -11,5 +11,5 @@ nn-maker will be a simple library created to help with creating deep neural netw
 - [ ] implementing Adam optimizer
 - [ ] additional customizable options, e.g. own choice of optimizer
 
-#### Expected finish: end of next week, i.e. 2.08.2019
+#### Expected finish date:  6-7.08.2019
 
