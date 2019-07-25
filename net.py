@@ -17,3 +17,4 @@ class Net:
 
 if __name__ == '__main__':
     test1 = Net((5,4,1))
+    test1.train()
