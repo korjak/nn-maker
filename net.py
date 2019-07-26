@@ -10,13 +10,13 @@ class Net:
         for i in range(1,len(layers)):
             self.W.append(np.random.randn(layers[i], layers[i-1]) * np.sqrt(2/layers[i-1]))
             self.b.append(np.zeros((layers[i], 1)))
-        self.W[-1] = self.W[-1] * 0.5   # last uses sigmoid activation function instead of relu, other initialization
+        self.W[-1] = self.W[-1] * 0.5   # last uses sigmoid activation function instead of relu
 
     def print_me(self):
         print(self.W[-1])
 
 
 if __name__ == '__main__':
-    np.random.seed(1)
+    #np.random.seed(1)
     test1 = Net((5,4,1))
     test1.print_me()
