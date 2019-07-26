@@ -8,13 +8,15 @@ class Net:
         self.W.append(-1)
         self.b.append(-1)
         for i in range(1,len(layers)):
-            self.W.append(np.random.randn(layers[i], layers[i-1]) * 0.01)
+            self.W.append(np.random.randn(layers[i], layers[i-1]) * np.sqrt(2/layers[i-1]))
             self.b.append(np.zeros((layers[i], 1)))
+        self.W[-1] = self.W[-1] * 0.5   # last uses sigmoid activation function instead of relu, other initialization
 
     def print_me(self):
-        print(self.W[2])
+        print(self.W[-1])
 
 
 if __name__ == '__main__':
+    np.random.seed(1)
     test1 = Net((5,4,1))
-    test1.train()
+    test1.print_me()
