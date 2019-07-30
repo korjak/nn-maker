@@ -78,7 +78,7 @@ class Net:
         self.dA[self.L] = dAL
         dZ = dAL * self.A_saved[self.L] * (1 - self.A_saved[self.L])
         dW = 1/m * np.dot(dZ, self.A_saved[self.L-1].T)
-        db = 1/m * np.sum(dZ)
+        db = 1/m * np.sum(dZ, axis=1, keepdims=True)
         dA = np.dot(self.W[self.L].T, dZ)
         self.dZ[self.L] = dZ
         self.dW[self.L] = dW
@@ -86,15 +86,24 @@ class Net:
         self.dA[self.L] = dA
         for i in reversed(range(1,self.L)):
             dZ = np.array(dA, copy=True)
+            print('dZ.shape ' + str(dZ.shape))
+            print('Z.shape ' + str(self.Z_saved[i].shape))
             dZ[self.Z_saved[i] <= 0] = 0
             #print('i: ' + str(i))
-            dW = 1/m * np.dot(dZ, self.A_saved[i].T)
-            db = 1/m * np.sum(dZ)
+            dW = 1/m * np.dot(dZ, self.A_saved[i+1].T)
+            db = 1/m * np.sum(dZ, axis=1, keepdims=True)
             dA = np.dot(self.W[i].T,dZ)
             self.dZ[i] = dZ
             self.dW[i] = dW
             self.db[i] = db
             self.dA[i] = dA
+
+    def parameters_update(self, learning_rate):
+        for i in range(1,self.L+1):
+            print(self.W[i].shape)
+            print(self.dW[i].shape)
+            self.W[i] = self.W[i] - learning_rate * self.dW[i]
+            self.b[i] = self.b[i] - learning_rate * self.db[i]
 
     def train(self, X, Y):
         self.forward_prop(X)
@@ -113,4 +122,5 @@ if __name__ == '__main__':
     test1.forward_prop(X)
     test1.cost_function(Y)
     test1.backward_prop(Y)
-    test1.print_me()
+    test1.parameters_update(0.02)
+    #test1.print_me()
