@@ -58,14 +58,12 @@ class Net:
             self.Z_saved[i] = Z
         # for last layer we use softmax or sigmoid accordingly to output layer size
         Z = np.dot(self.W[-1], A) + self.b[-1]
-        #print('jebanie ' + str(A))
         if len(self.b[-1]) == 1:
             A = Net.activation(Z, 'sigmoid')
         else:
             A = Net.activation(Z, 'softmax')
         #print(self.W[1].shape)
         self.A_saved[-1] = A
-        #print('jebanie ' + str(A))
         #np.testing.assert_array_equal(self.A_saved[-1], self.A_saved[self.L])
         self.Z_saved[-1] = Z
 
@@ -126,10 +124,20 @@ class Net:
             self.parameters_update(learning_rate)
             print(cost)
 
+    def grad_check(self, X, Y, epsilon = 1e-7):
+        self.A_saved[0] = X
+        self.forward_prop(X)
+        print(self.W)
+        theta = self.W + self.b
+        theta_plus = theta + epsilon
+        theta_minus = theta - epsilon
+        cost_plus = self.cost_function(Y)
+
+
 if __name__ == '__main__':
     #np.seterr(divide='ignore', invalid='ignore')
     #np.random.seed(1)
-    test1 = Net((8, 10, 10, 10, 1))
+    test1 = Net((8, 5, 1))
     #X = np.array([0.05, 11, 100, 2, 0.8], ndmin=2)
     #X = np.random.randn(10, 5)
     #Y = np.random.randint(2, size=(1, 10))
@@ -138,8 +146,9 @@ if __name__ == '__main__':
     Y = np.array(data[:,-1], ndmin=2)
     X = data[:,0:-1]
     X = X.T
+    test1.grad_check(X,Y)
     #print(X.shape)
-    test1.train(X, Y, 0.08, 10000)
+    #test1.train(X, Y, 0.08, 10000)
     #test1.forward_prop(X)
     #test1.cost_function(Y)
     #test1.backward_prop(Y)
