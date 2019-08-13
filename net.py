@@ -93,7 +93,6 @@ class Net:
         self.db[self.L] = db
         self.dA[self.L] = dA
         for i in reversed(range(1,self.L)):
-            #print('kutangens: ' + str(i))
             dZ = np.array(dA, copy=True)
             #print('dZ.shape ' + str(dZ.shape))
             #print('Z.shape ' + str(self.Z_saved[i].shape))
