@@ -10,7 +10,9 @@ class Net:
         self.Z_saved = []
         self.dA = []
         self.dZ = []
+        self.backup = []
         self.L = len(layers) - 1
+        self.layers = layers
         # -1 are appended to arrays in order to assign n-th index to n-th layer, e.g. W2 = W[2]
         self.W.append(-1)
         self.b.append(-1)
@@ -124,14 +126,28 @@ class Net:
             self.parameters_update(learning_rate)
             print(cost)
 
+    def grad_check_change_values(self, change=False):
+        if not change:
+            last_index = 0
+            # skip first element (-1)
+            W_iter = iter(self.W)
+            next(W_iter)
+            for i, w in enumerate(self.W):
+                size_x, size_y = self.layers[i-1], self.layers[i]
+                next_index = size_x * size_y + last_index
+                w = np.reshape(self.backup[last_index:(last_index+size_x*size_y)], (size_x,size_y))
+                last_index = next_index
+                #next_index =
+        else:
+            flatten = lambda l: [item for sublist in l for item in sublist]
+            backup = flatten(self.W) + flatten(self.b)
+            self.W = self.W + change
+
     def grad_check(self, X, Y, epsilon = 1e-7):
         self.A_saved[0] = X
         self.forward_prop(X)
-        print(self.W)
-        theta = self.W + self.b
-        theta_plus = theta + epsilon
-        theta_minus = theta - epsilon
-        cost_plus = self.cost_function(Y)
+        #print(self.W)
+        self.grad_check_change_values(epsilon)
 
 
 if __name__ == '__main__':
@@ -146,7 +162,8 @@ if __name__ == '__main__':
     Y = np.array(data[:,-1], ndmin=2)
     X = data[:,0:-1]
     X = X.T
-    test1.grad_check(X,Y)
+    #test1.grad_check(X,Y)
+    print(test1.layers)
     #print(X.shape)
     #test1.train(X, Y, 0.08, 10000)
     #test1.forward_prop(X)
