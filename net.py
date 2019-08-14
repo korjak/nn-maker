@@ -1,49 +1,29 @@
 import numpy as np
 
+
 class Net:
     def __init__(self, layers):
-        self.W = []
-        self.dW = []
-        self.b = []
-        self.db = []
-        self.A_saved = []
-        self.Z_saved = []
-        self.dA = []
-        self.dZ = []
-        self.backup = []
+        """
+            Create dictionaries for storing variables and initialize parameters
+        """
+        self.params = {}
+        self.grads = {}
+        self.saved = {}
         self.L = len(layers) - 1
-        self.layers = layers
-        # -1 are appended to arrays in order to assign n-th index to n-th layer, e.g. W2 = W[2]
-        self.W.append(-1)
-        self.b.append(-1)
-        self.A_saved.append(-1)
-        self.Z_saved.append(-1)
-        self.dA.append(-1)
-        self.dW.append(-1)
-        self.db.append(-1)
-        self.dZ.append(-1)
-        for i in range(1,self.L+1):
-            #print(np.sqrt(1/layers[i-1]))
-            self.W.append(np.random.randn(layers[i], layers[i-1]) * 0.01) #np.sqrt(2/layers[i-1]))
-            self.b.append(np.zeros((layers[i], 1)))
-            self.A_saved.append(-1)
-            self.Z_saved.append(-1)
-            self.dW.append(-1)
-            self.db.append(-1)
-            self.dA.append(-1)
-            self.dZ.append(-1)
-        #self.W[-1] = self.W[-1] * 0.5   # different activation function in last layer
+        for i in range(1, self.L + 1):
+            self.params['W' + str(i)] = np.random.randn(layers[i], layers[i-1]) * 0.01
+            self.params['b' + str(i)] = np.zeros((layers[i], 1))
 
     def print_me(self):
-        print(self.dW)
+        pass
 
     @staticmethod
-    def activation(Z, type):
-        if type == 'relu':
+    def activation(Z, act_type):
+        if act_type == 'relu':
             return np.maximum(0,Z)
-        elif type == 'sigmoid':
+        elif act_type == 'sigmoid':
             return 1/(1+np.exp(-Z))
-        elif type == 'softmax':
+        elif act_type == 'softmax':
             temp = np.exp(Z)
             return temp/np.sum(temp)
         else:
@@ -53,71 +33,57 @@ class Net:
     def forward_prop(self, X):
         A = X
         for i in range(1, self.L):
-            #print(i)
-            Z = np.dot(self.W[i], A) + self.b[i]
+            Z = np.dot(self.params['W' + str(i)], A) + self.params['b' + str(i)]
             A = Net.activation(Z, 'relu')
-            self.A_saved[i] = A
-            self.Z_saved[i] = Z
+            self.saved['A' + str(i)] = A
+            self.saved['Z' + str(i)] = Z
         # for last layer we use softmax or sigmoid accordingly to output layer size
-        Z = np.dot(self.W[-1], A) + self.b[-1]
-        if len(self.b[-1]) == 1:
+        Z = np.dot(self.params['W' + str(self.L)], A) + self.params['b' + str(self.L)]
+        if len(self.params['b' + str(self.L)] == 1):
             A = Net.activation(Z, 'sigmoid')
         else:
             A = Net.activation(Z, 'softmax')
-        #print(self.W[1].shape)
-        self.A_saved[-1] = A
-        #np.testing.assert_array_equal(self.A_saved[-1], self.A_saved[self.L])
-        self.Z_saved[-1] = Z
+        self.saved['A' + str(self.L)] = A
+        self.saved['Z' + str(self.L)] = Z
 
     def cost_function(self, Y):
         m = Y.shape[1]
-        np.testing.assert_array_equal(self.A_saved[-1], self.A_saved[self.L])
-        cost1 = np.dot(Y, np.log(self.A_saved[-1]).T)
-        #print(self.A_saved[-1].T)
-        cost2 = np.dot((1 - Y), np.log(1 - self.A_saved[-1].T))
+        cost1 = np.dot(Y, np.log(self.saved['A' + str(self.L)].T))
+        cost2 = np.dot((1 - Y), np.log(1 - self.saved['A' + str(self.L)].T))
         cost_total = -1/m * (cost1 + cost2)
         cost_total = np.squeeze(cost_total)
         return cost_total
 
     def backward_prop(self, Y):
         m = Y.shape[1]
-        #print('1 ' + str(1-self.A_saved[self.L]))
-        dAL = - np.divide(Y, self.A_saved[self.L]) + np.divide((1 - Y), (1 - self.A_saved[self.L]))
-        self.dA[self.L] = dAL
-        dZ = dAL * self.A_saved[self.L] * (1 - self.A_saved[self.L])
-        dW = 1/m * np.dot(dZ, self.A_saved[self.L-1].T)
+        dAL = - np.divide(Y, self.saved['A' + str(self.L)]) + np.divide((1 - Y), (1 - self.saved['A' + str(self.L)]))
+        self.grads['dA' + str(self.L)] = dAL
+        dZ = dAL * self.saved['A' + str(self.L)] * (1 - self.saved['A' + str(self.L)])
+        dW = 1/m * np.dot(dZ, self.saved['A' + str(self.L - 1)].T)
         db = 1/m * np.sum(dZ, axis=1, keepdims=True)
-        dA = np.dot(self.W[self.L].T, dZ)
-        self.dZ[self.L] = dZ
-        self.dW[self.L] = dW
-        self.db[self.L] = db
-        self.dA[self.L] = dA
+        dA = np.dot(self.params['W' + str(self.L)].T, dZ)
+        self.grads['dZ' + str(self.L)] = dZ
+        self.grads['dW' + str(self.L)] = dW
+        self.grads['db' + str(self.L)] = db
+        self.grads['dA' + str(self.L)] = dA
         for i in reversed(range(1,self.L)):
             dZ = np.array(dA, copy=True)
-            #print('dZ.shape ' + str(dZ.shape))
-            #print('Z.shape ' + str(self.Z_saved[i].shape))
-            dZ[self.Z_saved[i] <= 0] = 0
-            #print('i: ' + str(i))
-            dW = 1/m * np.dot(dZ, self.A_saved[i-1].T)
-            #print('dW.shape ' + str(dW.shape))
-            #print('W.shape ' + str(self.W[i].shape))
-            #print('A.shape ' + str(self.A_saved[i].shape))
+            dZ[self.saved['Z' + str(i)] <= 0] = 0
+            dW = 1/m * np.dot(dZ, self.saved['A' + str(i-1)].T)
             db = 1/m * np.sum(dZ, axis=1, keepdims=True)
-            dA = np.dot(self.W[i].T,dZ)
-            self.dZ[i] = dZ
-            self.dW[i] = dW
-            self.db[i] = db
-            self.dA[i] = dA
+            dA = np.dot(self.params['W' + str(i)].T, dZ)
+            self.grads['dZ' + str(i)] = dZ
+            self.grads['dW' + str(i)] = dW
+            self.grads['db' + str(i)] = db
+            self.grads['dA' + str(i)] = dA
 
     def parameters_update(self, learning_rate):
-        for i in range(1,self.L+1):
-            #print(self.W[i].shape)
-            #print(self.dW[i].shape)
-            self.W[i] = self.W[i] - learning_rate * self.dW[i]
-            self.b[i] = self.b[i] - learning_rate * self.db[i]
+        for i in range(1,self.L):
+            self.params['W' + str(i)] = self.params['W' + str(i)] - learning_rate * self.grads['dW' + str(i)]
+            self.params['b' + str(i)] = self.params['b' + str(i)] - learning_rate * self.grads['db' + str(i)]
 
     def train(self, X, Y, learning_rate, iter_no):
-        self.A_saved[0] = X
+        self.saved['A0'] = X
         for i in range(iter_no):
             self.forward_prop(X)
             cost = self.cost_function(Y)
@@ -125,48 +91,13 @@ class Net:
             self.parameters_update(learning_rate)
             print(cost)
 
-    def grad_check_change_values(self, change=False):
-        if not change:
-            last_index = 0
-            # skip first element (-1)
-            W_iter = iter(self.W)
-            next(W_iter)
-            for i, w in enumerate(self.W):
-                size_x, size_y = self.layers[i-1], self.layers[i]
-                next_index = size_x * size_y + last_index
-                w = np.reshape(self.backup[last_index:(last_index+size_x*size_y)], (size_x,size_y))
-                last_index = next_index
-                #next_index =
-        else:
-            flatten = lambda l: [item for sublist in l for item in sublist]
-            backup = flatten(self.W) + flatten(self.b)
-            self.W = self.W + change
-
-    def grad_check(self, X, Y, epsilon = 1e-7):
-        self.A_saved[0] = X
-        self.forward_prop(X)
-        #print(self.W)
-        self.grad_check_change_values(epsilon)
 
 
 if __name__ == '__main__':
-    #np.seterr(divide='ignore', invalid='ignore')
     #np.random.seed(1)
     test1 = Net((8, 5, 1))
-    #X = np.array([0.05, 11, 100, 2, 0.8], ndmin=2)
-    #X = np.random.randn(10, 5)
-    #Y = np.random.randint(2, size=(1, 10))
-    #print(X)
     data = np.genfromtxt('pima-indians-diabetes.csv', delimiter=',')
     Y = np.array(data[:,-1], ndmin=2)
     X = data[:,0:-1]
     X = X.T
-    #test1.grad_check(X,Y)
-    print(test1.layers)
-    #print(X.shape)
-    #test1.train(X, Y, 0.08, 10000)
-    #test1.forward_prop(X)
-    #test1.cost_function(Y)
-    #test1.backward_prop(Y)
-    #test1.parameters_update(0.02)
-    #test1.print_me()
+    test1.train(X, Y, 0.1, 10000)
