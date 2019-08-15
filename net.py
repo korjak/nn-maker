@@ -33,7 +33,7 @@ class Net:
             return temp/np.sum(temp)
         else:
             print('something went wrong')
-            quit()
+            exit(1)
 
     def forward_prop(self, X):
         """
@@ -49,10 +49,8 @@ class Net:
             self.saved['Z' + str(i)] = Z
         # for last layer we use softmax or sigmoid accordingly to output layer size
         Z = np.dot(self.params['W' + str(self.L)], A) + self.params['b' + str(self.L)]
-        if len(self.params['b' + str(self.L)] == 1):
-            A = Net.activation(Z, 'sigmoid')
-        else:
-            A = Net.activation(Z, 'softmax')
+        act_type = 'sigmoid' if len(self.params['b' + str(self.L)] == 1) else 'softmax'
+        A = Net.activation(Z, act_type)
         self.saved['A' + str(self.L)] = A
         self.saved['Z' + str(self.L)] = Z
 
@@ -106,6 +104,7 @@ class Net:
             self.params['W' + str(i)] = self.params['W' + str(i)] - learning_rate * self.grads['dW' + str(i)]
             self.params['b' + str(i)] = self.params['b' + str(i)] - learning_rate * self.grads['db' + str(i)]
 
+
     def train(self, X, Y, learning_rate, iter_no):
         """
             Trains the neural network using previously defined functions
@@ -114,10 +113,10 @@ class Net:
         self.saved['A0'] = X
         for i in range(iter_no):
             self.forward_prop(X)
-            cost = self.cost_function(Y)
+            #cost = self.cost_function(Y)
             self.backward_prop(Y)
             self.parameters_update(learning_rate)
-            print(cost)
+            #print(cost)
 
 
 
@@ -128,5 +127,5 @@ if __name__ == '__main__':
     Y = np.array(data[:,-1], ndmin=2)
     X = data[:,0:-1]
     X = X.T
-    #test1.train(X, Y, 0.1, 10000)
+    test1.train(X, Y, 0.1, 10000)
 
