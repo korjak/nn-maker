@@ -19,6 +19,11 @@ class Net:
 
     @staticmethod
     def activation(Z, act_type):
+        """
+            Computes activation function g(Z)
+                Uses only parameters Z and act_type (type of activation function)
+                No changes made in instance variable
+        """
         if act_type == 'relu':
             return np.maximum(0,Z)
         elif act_type == 'sigmoid':
@@ -31,6 +36,11 @@ class Net:
             quit()
 
     def forward_prop(self, X):
+        """
+            Performs forward propagation
+                Uses parameter X (data) and instance variable 'params'
+                Changes instance variable 'saved;
+        """
         A = X
         for i in range(1, self.L):
             Z = np.dot(self.params['W' + str(i)], A) + self.params['b' + str(i)]
@@ -47,6 +57,10 @@ class Net:
         self.saved['Z' + str(self.L)] = Z
 
     def cost_function(self, Y):
+        """
+            Computes cost function
+                Uses parameter Y and instance variable 'saved' (predicted Y)
+        """
         m = Y.shape[1]
         cost1 = np.dot(Y, np.log(self.saved['A' + str(self.L)].T))
         cost2 = np.dot((1 - Y), np.log(1 - self.saved['A' + str(self.L)].T))
@@ -55,6 +69,11 @@ class Net:
         return cost_total
 
     def backward_prop(self, Y):
+        """
+            Performs backward propagation
+                Uses parameter Y and instance variables 'saved' and 'grads'
+                Changes instance variable 'grads'
+        """
         m = Y.shape[1]
         dAL = - np.divide(Y, self.saved['A' + str(self.L)]) + np.divide((1 - Y), (1 - self.saved['A' + str(self.L)]))
         self.grads['dA' + str(self.L)] = dAL
@@ -78,11 +97,20 @@ class Net:
             self.grads['dA' + str(i)] = dA
 
     def parameters_update(self, learning_rate):
+        """
+            Updates W and b
+                Uses parameter 'learning_rate'
+                Changes instance variable 'params'
+        """
         for i in range(1,self.L):
             self.params['W' + str(i)] = self.params['W' + str(i)] - learning_rate * self.grads['dW' + str(i)]
             self.params['b' + str(i)] = self.params['b' + str(i)] - learning_rate * self.grads['db' + str(i)]
 
     def train(self, X, Y, learning_rate, iter_no):
+        """
+            Trains the neural network using previously defined functions
+                Uses and changes all instance variables
+        """
         self.saved['A0'] = X
         for i in range(iter_no):
             self.forward_prop(X)
@@ -100,4 +128,5 @@ if __name__ == '__main__':
     Y = np.array(data[:,-1], ndmin=2)
     X = data[:,0:-1]
     X = X.T
-    test1.train(X, Y, 0.1, 10000)
+    #test1.train(X, Y, 0.1, 10000)
+
