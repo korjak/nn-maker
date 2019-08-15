@@ -104,6 +104,16 @@ class Net:
             self.params['W' + str(i)] = self.params['W' + str(i)] - learning_rate * self.grads['dW' + str(i)]
             self.params['b' + str(i)] = self.params['b' + str(i)] - learning_rate * self.grads['db' + str(i)]
 
+    def predict(self, features):
+        """
+            Gives prediction for given features
+                Uses 'saved' instance variable
+        """
+        self.forward_prop(features)
+        predictions = self.saved['A' + str(self.L)]
+        predictions[predictions >= 0.5] = 1
+        predictions[predictions < 0.5] = 0
+        return predictions
 
     def train(self, X, Y, learning_rate, iter_no):
         """
@@ -116,16 +126,15 @@ class Net:
             #cost = self.cost_function(Y)
             self.backward_prop(Y)
             self.parameters_update(learning_rate)
-            #print(cost)
-
+            pred = self.predict(X)
+            print(np.sum((pred == Y)/Y.shape[1])) if not i % 100 else 0
 
 
 if __name__ == '__main__':
-    #np.random.seed(1)
-    test1 = Net((8, 5, 1))
+    test1 = Net((8, 10, 10, 1))
     data = np.genfromtxt('pima-indians-diabetes.csv', delimiter=',')
     Y = np.array(data[:,-1], ndmin=2)
     X = data[:,0:-1]
     X = X.T
-    test1.train(X, Y, 0.1, 10000)
+    test1.train(X, Y, 0.05, 50000)
 
