@@ -4,15 +4,18 @@ import numpy as np
 class Net:
     def __init__(self, layers):
         """
-            Create dictionaries for storing variables and initialize parameters
+            Creates dictionaries for storing variables and initialize parameters
         """
         self.params = {}
         self.grads = {}
         self.saved = {}
+        self.v = {}
         self.L = len(layers) - 1
         for i in range(1, self.L + 1):
-            self.params['W' + str(i)] = np.random.randn(layers[i], layers[i-1]) * 0.01
+            self.params['W' + str(i)] = np.random.randn(layers[i], layers[i-1]) * np.sqrt(1./layers[i-1])
             self.params['b' + str(i)] = np.zeros((layers[i], 1))
+            self.v["dW" + str(i)] = np.zeros((self.params['W' + str(i)].shape[0], self.params['W' + str(i)].shape[1]))
+            self.v["db" + str(i)] = np.zeros((self.params['b' + str(i)].shape[0], self.params['b' + str(i)].shape[1]))
 
     def print_me(self):
         pass
@@ -74,6 +77,7 @@ class Net:
         """
         m = Y.shape[1]
         dAL = - np.divide(Y, self.saved['A' + str(self.L)]) + np.divide((1 - Y), (1 - self.saved['A' + str(self.L)]))
+        #print(dAL)
         self.grads['dA' + str(self.L)] = dAL
         dZ = dAL * self.saved['A' + str(self.L)] * (1 - self.saved['A' + str(self.L)])
         dW = 1/m * np.dot(dZ, self.saved['A' + str(self.L - 1)].T)
@@ -100,9 +104,25 @@ class Net:
                 Uses parameter 'learning_rate'
                 Changes instance variable 'params'
         """
-        for i in range(1,self.L):
+        for i in range(1, self.L):
             self.params['W' + str(i)] = self.params['W' + str(i)] - learning_rate * self.grads['dW' + str(i)]
             self.params['b' + str(i)] = self.params['b' + str(i)] - learning_rate * self.grads['db' + str(i)]
+
+    def parameters_update_momentum(self, learning_rate, beta):
+        """
+            Updates W and b using momentum
+                Uses:
+                    :param learning_rate:   learning rate alpha given by an user
+                    :param beta:            beta coefficient given by an user
+                Changes:
+                    instance variable 'v'
+                    instance variable 'params'
+        """
+        for i in range(1, self.L):
+            self.v['dW' + str(i)] = beta * self.v['dW' + str(i)] + (1 - beta) * self.grads['dW' + str(i)]
+            self.v['db' + str(i)] = beta * self.v['db' + str(i)] + (1 - beta) * self.grads['db' + str(i)]
+            self.params['W' + str(i)] = self.params['W' + str(i)] - learning_rate * self.v['dW' + str(i)]
+            self.params['b' + str(i)] = self.params['b' + str(i)] - learning_rate * self.v['db' + str(i)]
 
     def predict(self, features):
         """
@@ -115,7 +135,7 @@ class Net:
         predictions[predictions < 0.5] = 0
         return predictions
 
-    def train(self, X, Y, learning_rate, iter_no):
+    def train(self, X, Y, learning_rate, beta, iter_no):
         """
             Trains the neural network using previously defined functions
                 Uses and changes all instance variables
@@ -125,16 +145,19 @@ class Net:
             self.forward_prop(X)
             #cost = self.cost_function(Y)
             self.backward_prop(Y)
-            self.parameters_update(learning_rate)
+            #self.parameters_update(learning_rate)
+            self.parameters_update_momentum(learning_rate, beta)
             pred = self.predict(X)
             print(np.sum((pred == Y)/Y.shape[1])) if not i % 100 else 0
 
 
 if __name__ == '__main__':
-    test1 = Net((8, 10, 10, 1))
+    test1 = Net((8, 10, 20, 10, 1))
     data = np.genfromtxt('pima-indians-diabetes.csv', delimiter=',')
-    Y = np.array(data[:,-1], ndmin=2)
-    X = data[:,0:-1]
+    Y = np.array(data[:, -1], ndmin=2)
+    X = data[:, 0:-1]
     X = X.T
-    test1.train(X, Y, 0.05, 50000)
+    X = X - np.mean(X)
+    #X = X / np.var(X, ddof=1)
+    test1.train(X, Y, 0.05, 0.9, 10000)
 
