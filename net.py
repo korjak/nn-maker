@@ -1,4 +1,5 @@
 import numpy as np
+from math import floor
 
 
 class Net:
@@ -112,8 +113,8 @@ class Net:
         """
             Updates W and b using momentum
                 Uses:
-                    :param learning_rate:   learning rate alpha given by an user
-                    :param beta:            beta coefficient given by an user
+                    :param learning_rate:   learning rate alpha specified by a user
+                    :param beta:            beta coefficient specified by n user
                 Changes:
                     instance variable 'v'
                     instance variable 'params'
@@ -135,23 +136,59 @@ class Net:
         predictions[predictions < 0.5] = 0
         return predictions
 
-    def train(self, X, Y, learning_rate, beta, iter_no):
+    @staticmethod
+    def make_batch_mini(X, Y, batch_size):
+        examples_amount = X.shape[1]
+        perm = np.random.permutation(examples_amount)
+        X = X[:, perm]
+        Y = Y[:, perm]
+        batches_amount = floor(examples_amount/batch_size)
+        batches = []
+        prev_step = 0
+        for i in range(batches_amount):
+            next_step = prev_step + (i+1) * batch_size
+            x_batch = X[:, prev_step:next_step]
+            y_batch = Y[:, prev_step:next_step]
+            batches.append((x_batch, y_batch))
+        if examples_amount % batch_size != 0:
+            already_batched = batch_size * batches_amount
+            x_batch = X[:, already_batched:]
+            y_batch = Y[:, already_batched:]
+            batches.append((x_batch, y_batch))
+        return batches
+
+    def train(self, X, Y, learning_rate=0.05, beta=1.0, batch_size=64, iter_no=10000):
         """
             Trains the neural network using previously defined functions
-                Uses and changes all instance variables
+                Uses:
+                    :param X:               feature vector
+                    :param Y:               train set classes
+                    :param learning_rate:   learning rate, specified by a user
+                    :param beta:            beta coefficient for momentum, specified by a user
+                    :param batch_size:      size of one mini-batch
+                    :param iter_no:         number of epochs
+                Changes:
+                    instance variables 'params'
+                    instance variables 'grads'
+                    instance variables 'saved'
+                    instance variables 'v'
         """
-        self.saved['A0'] = X
+        data = self.make_batch_mini(X, Y, batch_size)
         for i in range(iter_no):
-            self.forward_prop(X)
-            #cost = self.cost_function(Y)
-            self.backward_prop(Y)
-            #self.parameters_update(learning_rate)
-            self.parameters_update_momentum(learning_rate, beta)
-            pred = self.predict(X)
-            print(np.sum((pred == Y)/Y.shape[1])) if not i % 100 else 0
+            for idx, batch in enumerate(data):
+                self.saved['A0'] = batch[0]
+                self.forward_prop(batch[0])
+                #cost = self.cost_function(Y)
+                self.backward_prop(batch[1])
+                #self.parameters_update(learning_rate)
+                self.parameters_update_momentum(learning_rate, beta)
+                pred = self.predict(batch[0])
+            print('Epoch: ' + str(i) + '/' + str(iter_no))
+            print('Accuracy: ' + str(np.sum((pred == batch[1])/batch[1].shape[1])))
 
 
 if __name__ == '__main__':
+    #np.random.seed(555)
     test1 = Net((8, 10, 20, 10, 1))
     data = np.genfromtxt('pima-indians-diabetes.csv', delimiter=',')
     Y = np.array(data[:, -1], ndmin=2)
@@ -159,5 +196,4 @@ if __name__ == '__main__':
     X = X.T
     X = X - np.mean(X)
     #X = X / np.var(X, ddof=1)
-    test1.train(X, Y, 0.05, 0.9, 10000)
-
+    test1.train(X, Y, 0.05, 0.9, 64, 1000)
