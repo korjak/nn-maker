@@ -5,10 +5,11 @@ nn-maker will be a simple library created to help with creating deep neural netw
 - [x] cost function
 - [x] forward and backpropagation
 ## Things to do
+- [ ] preventing exploding gradients
 - [ ] regularization: L2
 - [ ] regularization: inverted-dropout
 - [ ] implementing Adam optimizer
 - [ ] additional customizable options, e.g. own choice of optimizer
 
-#### Expected finish date:  17-18.08.2019
+#### Expected finish date: end of August 2019
 
