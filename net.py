@@ -11,12 +11,15 @@ class Net:
         self.grads = {}
         self.saved = {}
         self.v = {}
+        self.s = {}
         self.L = len(layers) - 1
         for i in range(1, self.L + 1):
             self.params['W' + str(i)] = np.random.randn(layers[i], layers[i-1]) * np.sqrt(1./layers[i-1])
             self.params['b' + str(i)] = np.zeros((layers[i], 1))
             self.v["dW" + str(i)] = np.zeros((self.params['W' + str(i)].shape[0], self.params['W' + str(i)].shape[1]))
             self.v["db" + str(i)] = np.zeros((self.params['b' + str(i)].shape[0], self.params['b' + str(i)].shape[1]))
+            self.s["dW" + str(i)] = np.zeros((self.params['W' + str(i)].shape[0], self.params['W' + str(i)].shape[1]))
+            self.s["db" + str(i)] = np.zeros((self.params['b' + str(i)].shape[0], self.params['b' + str(i)].shape[1]))
 
     def print_me(self):
         pass
@@ -73,8 +76,12 @@ class Net:
     def backward_prop(self, Y):
         """
             Performs backward propagation
-                Uses parameter Y and instance variables 'saved' and 'grads'
-                Changes instance variable 'grads'
+                Uses:
+                     :param Y:  train set classes
+                     instance variable 'saved'
+                     instance variable 'grads'
+                Changes:
+                     instance variable 'grads'
         """
         m = Y.shape[1]
         dAL = - np.divide(Y, self.saved['A' + str(self.L)]) + np.divide((1 - Y), (1 - self.saved['A' + str(self.L)]))
@@ -114,7 +121,7 @@ class Net:
             Updates W and b using momentum
                 Uses:
                     :param learning_rate:   learning rate alpha specified by a user
-                    :param beta:            beta coefficient specified by n user
+                    :param beta:            beta coefficient specified by a user
                 Changes:
                     instance variable 'v'
                     instance variable 'params'
@@ -124,6 +131,36 @@ class Net:
             self.v['db' + str(i)] = beta * self.v['db' + str(i)] + (1 - beta) * self.grads['db' + str(i)]
             self.params['W' + str(i)] = self.params['W' + str(i)] - learning_rate * self.v['dW' + str(i)]
             self.params['b' + str(i)] = self.params['b' + str(i)] - learning_rate * self.v['db' + str(i)]
+
+    def parameters_update_adam(self, learning_rate, beta1, beta2, iteration):
+        """
+            Updates W and b using Adam optimizer
+                Uses:
+                    :param learning_rate:   learning rate alpha specified by a user
+                    :param beta1:           beta coefficient for momentum, specified by a user
+                    :param beta2:           beta coefficient for RMSprop, specified by a user
+                    :param iteration:       number of current iteration
+                Changes:
+                    instance variable 'v'
+                    instance variable 's'
+                    instance variable 'params'
+        """
+        epsilon = 1e-8
+        v_corrected = {}
+        s_corrected = {}
+        for i in range(1, self.L):
+            self.v['dW' + str(i)] = beta1 * self.v['dW' + str(i)] + (1 - beta1) * self.grads['dW' + str(i)]
+            self.v['db' + str(i)] = beta1 * self.v['db' + str(i)] + (1 - beta1) * self.grads['db' + str(i)]
+            #print('tutaj tutaj tutaj tutaj tutaj tutaj ' + str(1 - beta1**iteration))
+            #print(self.s['dW' + str(i)])
+            v_corrected['dW'] = self.v['dW' + str(i)] / ((1 - beta1) ** i)
+            v_corrected['db'] = self.v['db' + str(i)] / ((1 - beta1) ** i)
+            self.s['dW' + str(i)] = beta2 * self.s['dW' + str(i)] + (1 - beta2) * self.grads['dW' + str(i)] ** 2
+            self.s['db' + str(i)] = beta2 * self.s['db' + str(i)] + (1 - beta2) * self.grads['db' + str(i)] ** 2
+            s_corrected['dW'] = self.s['dW' + str(i)] / ((1 - beta2) ** i)
+            s_corrected['db'] = self.s['db' + str(i)] / ((1 - beta2) ** i)
+            self.params['W' + str(i)] = self.params['W' + str(i)] - learning_rate * v_corrected['dW'] / (np.sqrt(s_corrected['dW']) + epsilon)
+            self.params['b' + str(i)] = self.params['b' + str(i)] - learning_rate * v_corrected['db'] / (np.sqrt(s_corrected['db']) + epsilon)
 
     def predict(self, features):
         """
@@ -146,10 +183,11 @@ class Net:
         batches = []
         prev_step = 0
         for i in range(batches_amount):
-            next_step = prev_step + (i+1) * batch_size
+            next_step = prev_step + batch_size
             x_batch = X[:, prev_step:next_step]
             y_batch = Y[:, prev_step:next_step]
             batches.append((x_batch, y_batch))
+            prev_step = next_step
         if examples_amount % batch_size != 0:
             already_batched = batch_size * batches_amount
             x_batch = X[:, already_batched:]
@@ -157,14 +195,15 @@ class Net:
             batches.append((x_batch, y_batch))
         return batches
 
-    def train(self, X, Y, learning_rate=0.05, beta=1.0, batch_size=64, iter_no=10000):
+    def train(self, X, Y, learning_rate=0.05, beta1=0.9, beta2=0.999, batch_size=64, iter_no=10000):
         """
             Trains the neural network using previously defined functions
                 Uses:
                     :param X:               feature vector
                     :param Y:               train set classes
                     :param learning_rate:   learning rate, specified by a user
-                    :param beta:            beta coefficient for momentum, specified by a user
+                    :param beta1:           beta coefficient for momentum, specified by a user
+                    :param beta2:           beta coefficient for RMSprop, specified by a user
                     :param batch_size:      size of one mini-batch
                     :param iter_no:         number of epochs
                 Changes:
@@ -174,26 +213,39 @@ class Net:
                     instance variables 'v'
         """
         data = self.make_batch_mini(X, Y, batch_size)
+        #print(data[1][1])
+        Y_shuffled = [i for sublist in Y for i in sublist]
+        #print(len(Y_shuffled))
+        #predictions = []
         for i in range(iter_no):
+            predictions = []
             for idx, batch in enumerate(data):
                 self.saved['A0'] = batch[0]
                 self.forward_prop(batch[0])
                 #cost = self.cost_function(Y)
                 self.backward_prop(batch[1])
                 #self.parameters_update(learning_rate)
-                self.parameters_update_momentum(learning_rate, beta)
+                #self.parameters_update_momentum(learning_rate, beta1)
+                self.parameters_update_adam(learning_rate, beta1, beta2, i)
                 pred = self.predict(batch[0])
+                predictions.append(pred)
+                #print(cost)
+                #print('Epoch: ' + str(i) + '/' + str(iter_no))
+                #print('Accuracy on current batch: ' + str(np.sum((pred == batch[1])/batch[1].shape[1])))
             print('Epoch: ' + str(i) + '/' + str(iter_no))
-            print('Accuracy: ' + str(np.sum((pred == batch[1])/batch[1].shape[1])))
+        predictions = [i.tolist() for i in predictions]
+        predictions = [item for array in predictions for sublist in array for item in sublist]
+        print('Accuracy: ' + str(np.sum(np.equal(predictions, Y_shuffled)/len(Y_shuffled))))
+
 
 
 if __name__ == '__main__':
     #np.random.seed(555)
-    test1 = Net((8, 10, 20, 10, 1))
+    test1 = Net((8, 10, 10, 1))
     data = np.genfromtxt('pima-indians-diabetes.csv', delimiter=',')
     Y = np.array(data[:, -1], ndmin=2)
     X = data[:, 0:-1]
     X = X.T
     X = X - np.mean(X)
-    #X = X / np.var(X, ddof=1)
-    test1.train(X, Y, 0.05, 0.9, 64, 1000)
+    X = X / np.var(X, ddof=1)
+    test1.train(X, Y, 0.05, 0.9, 0.999, 64, 100)
