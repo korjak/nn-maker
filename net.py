@@ -1,5 +1,6 @@
 import numpy as np
 from math import floor
+from sklearn.datasets import load_digits
 
 
 class Net:
@@ -32,7 +33,7 @@ class Net:
                 No changes made in instance variable
         """
         if act_type == 'relu':
-            return np.maximum(0,Z)
+            return np.maximum(0, Z)
         elif act_type == 'sigmoid':
             return 1/(1+np.exp(-Z))
         elif act_type == 'softmax':
@@ -85,7 +86,6 @@ class Net:
         """
         m = Y.shape[1]
         dAL = - np.divide(Y, self.saved['A' + str(self.L)]) + np.divide((1 - Y), (1 - self.saved['A' + str(self.L)]))
-        #print(dAL)
         self.grads['dA' + str(self.L)] = dAL
         dZ = dAL * self.saved['A' + str(self.L)] * (1 - self.saved['A' + str(self.L)])
         dW = 1/m * np.dot(dZ, self.saved['A' + str(self.L - 1)].T)
@@ -95,6 +95,7 @@ class Net:
         self.grads['dW' + str(self.L)] = dW
         self.grads['db' + str(self.L)] = db
         self.grads['dA' + str(self.L)] = dA
+        #print(dW)
         for i in reversed(range(1,self.L)):
             dZ = np.array(dA, copy=True)
             dZ[self.saved['Z' + str(i)] <= 0] = 0
@@ -103,6 +104,7 @@ class Net:
             dA = np.dot(self.params['W' + str(i)].T, dZ)
             self.grads['dZ' + str(i)] = dZ
             self.grads['dW' + str(i)] = dW
+            #print(dW)
             self.grads['db' + str(i)] = db
             self.grads['dA' + str(i)] = dA
 
@@ -113,6 +115,9 @@ class Net:
                 Changes instance variable 'params'
         """
         for i in range(1, self.L):
+            #print('dW' + str(i))
+            #print(self.grads['dW' + str(i)])
+            #print(learning_rate * self.grads['dW' + str(i)])
             self.params['W' + str(i)] = self.params['W' + str(i)] - learning_rate * self.grads['dW' + str(i)]
             self.params['b' + str(i)] = self.params['b' + str(i)] - learning_rate * self.grads['db' + str(i)]
 
@@ -132,14 +137,13 @@ class Net:
             self.params['W' + str(i)] = self.params['W' + str(i)] - learning_rate * self.v['dW' + str(i)]
             self.params['b' + str(i)] = self.params['b' + str(i)] - learning_rate * self.v['db' + str(i)]
 
-    def parameters_update_adam(self, learning_rate, beta1, beta2, iteration):
+    def parameters_update_adam(self, learning_rate, beta1, beta2):
         """
             Updates W and b using Adam optimizer
                 Uses:
                     :param learning_rate:   learning rate alpha specified by a user
                     :param beta1:           beta coefficient for momentum, specified by a user
                     :param beta2:           beta coefficient for RMSprop, specified by a user
-                    :param iteration:       number of current iteration
                 Changes:
                     instance variable 'v'
                     instance variable 's'
@@ -151,8 +155,6 @@ class Net:
         for i in range(1, self.L):
             self.v['dW' + str(i)] = beta1 * self.v['dW' + str(i)] + (1 - beta1) * self.grads['dW' + str(i)]
             self.v['db' + str(i)] = beta1 * self.v['db' + str(i)] + (1 - beta1) * self.grads['db' + str(i)]
-            #print('tutaj tutaj tutaj tutaj tutaj tutaj ' + str(1 - beta1**iteration))
-            #print(self.s['dW' + str(i)])
             v_corrected['dW'] = self.v['dW' + str(i)] / ((1 - beta1) ** i)
             v_corrected['db'] = self.v['db' + str(i)] / ((1 - beta1) ** i)
             self.s['dW' + str(i)] = beta2 * self.s['dW' + str(i)] + (1 - beta2) * self.grads['dW' + str(i)] ** 2
@@ -179,6 +181,7 @@ class Net:
         perm = np.random.permutation(examples_amount)
         X = X[:, perm]
         Y = Y[:, perm]
+        print(Y)
         batches_amount = floor(examples_amount/batch_size)
         batches = []
         prev_step = 0
@@ -193,7 +196,7 @@ class Net:
             x_batch = X[:, already_batched:]
             y_batch = Y[:, already_batched:]
             batches.append((x_batch, y_batch))
-        return batches
+        return batches, Y[0]
 
     def train(self, X, Y, learning_rate=0.05, beta1=0.9, beta2=0.999, batch_size=64, iter_no=10000):
         """
@@ -212,40 +215,40 @@ class Net:
                     instance variables 'saved'
                     instance variables 'v'
         """
-        data = self.make_batch_mini(X, Y, batch_size)
-        #print(data[1][1])
-        Y_shuffled = [i for sublist in Y for i in sublist]
-        #print(len(Y_shuffled))
-        #predictions = []
+        data, Y_shuffled = self.make_batch_mini(X, Y, batch_size)
         for i in range(iter_no):
             predictions = []
+            avg_cost = 0
             for idx, batch in enumerate(data):
                 self.saved['A0'] = batch[0]
                 self.forward_prop(batch[0])
-                #cost = self.cost_function(Y)
+                cost = self.cost_function(batch[1])
+                avg_cost = avg_cost + cost
                 self.backward_prop(batch[1])
-                #self.parameters_update(learning_rate)
+                self.parameters_update(learning_rate)
                 #self.parameters_update_momentum(learning_rate, beta1)
-                self.parameters_update_adam(learning_rate, beta1, beta2, i)
+                #self.parameters_update_adam(learning_rate, beta1, beta2)
                 pred = self.predict(batch[0])
                 predictions.append(pred)
-                #print(cost)
-                #print('Epoch: ' + str(i) + '/' + str(iter_no))
-                #print('Accuracy on current batch: ' + str(np.sum((pred == batch[1])/batch[1].shape[1])))
-            print('Epoch: ' + str(i) + '/' + str(iter_no))
-        predictions = [i.tolist() for i in predictions]
-        predictions = [item for array in predictions for sublist in array for item in sublist]
-        print('Accuracy: ' + str(np.sum(np.equal(predictions, Y_shuffled)/len(Y_shuffled))))
+            #print('Epoch: ' + str(i) + '/' + str(iter_no))
+            predictions = [i.tolist() for i in predictions]
+            predictions = [item for array in predictions for sublist in array for item in sublist]
+            #print('Cost: ' + str(avg_cost/(idx+1)))
+            print('Accuracy: ' + str(np.sum(np.equal(predictions, Y_shuffled)/len(Y_shuffled))))
 
 
 
 if __name__ == '__main__':
     #np.random.seed(555)
-    test1 = Net((8, 10, 10, 1))
-    data = np.genfromtxt('pima-indians-diabetes.csv', delimiter=',')
-    Y = np.array(data[:, -1], ndmin=2)
-    X = data[:, 0:-1]
+    test1 = Net((13 ,40, 50, 40, 1))
+    data = np.genfromtxt('heart.csv', delimiter=',')
+    #data2 = load_digits(2, return_X_y=True)
+    #print(data2[1].shape)
+    Y = np.array(data[1:, -1], ndmin=2)
+    X = data[1:, 0:-1]
+    #X = data2[0]
+    #Y = np.array(data2[1], ndmin=2)
     X = X.T
     X = X - np.mean(X)
-    X = X / np.var(X, ddof=1)
-    test1.train(X, Y, 0.05, 0.9, 0.999, 64, 100)
+    X = X / np.std(X, ddof=1)
+    test1.train(X, Y, 0.05, 0.9, 0.999, 64, 3000)
